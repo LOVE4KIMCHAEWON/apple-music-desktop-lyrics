@@ -95,7 +95,7 @@ public sealed class LrclibLyricsProvider : ILyricsProvider
             (!validUrl && !validEmail))
             throw new LyricsProviderException(LyricsProviderError.Configuration,
                 "LRCLIB requires a real project homepage URL or contact email in the client identifier. Add it in Settings, or import a local .lrc file.");
-        return $"AppleMusicDesktopLyrics/0.2.3 ({contact})";
+        return $"AppleMusicDesktopLyrics/0.2.4 ({contact})";
     }
 
     private async Task<T?> FetchAsync<T>(string endpoint, IReadOnlyDictionary<string, string> parameters, string userAgent,

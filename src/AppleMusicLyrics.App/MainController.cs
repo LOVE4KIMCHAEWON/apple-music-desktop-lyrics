@@ -30,6 +30,7 @@ internal sealed class MainController : IDisposable
     private readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
     private readonly LocalLyricsCache _cache;
     private readonly AppleNativeLyricsProvider _nativeProvider = new();
+    private readonly ApplePublicCatalogResolver _publicCatalog;
     private readonly NativeCacheMonitor _nativeMonitor;
     private readonly Dispatcher _dispatcher = Application.Current.Dispatcher;
     private readonly DispatcherTimer _renderTimer;
@@ -77,6 +78,7 @@ internal sealed class MainController : IDisposable
         _settings = _store.Load();
         _settings.UiLanguage = UiText.Language;
         _cache = new(Path.Combine(directory, "lyrics-cache"));
+        _publicCatalog = new(_http, Path.Combine(directory, "public-catalog"), "US");
         _overlay = new(_settings);
         _overlay.SettingsChanged += () => { ScheduleSave(); RefreshVisibility(); UpdateTray(); };
         _observer = new(directory);
@@ -242,7 +244,7 @@ internal sealed class MainController : IDisposable
         var version = _lookupVersion;
         try
         {
-            var native = await Task.Run(() => _nativeProvider.GetNativeLyricsAsync(track, token), token);
+            var native = await ReadNativeLyricsAsync(track, token);
             if (!IsCurrent(key, version, token) || native.Document is null) return;
             // A validated native result supersedes a slow network fallback. A negative
             // local probe leaves that fallback running, so a cache event cannot lose it.
@@ -273,7 +275,7 @@ internal sealed class MainController : IDisposable
         {
             // Apple metadata and timeline are not atomic. Debounce rapid/new-track snapshots.
             await Task.Delay(350, token);
-            var native = await Task.Run(() => _nativeProvider.GetNativeLyricsAsync(track, token), token);
+            var native = await ReadNativeLyricsAsync(track, token);
             if (!IsCurrent(key, version, token)) return;
             _nativeLookup = native;
             var wasNative = _nativeLyrics is not null;
@@ -327,6 +329,21 @@ internal sealed class MainController : IDisposable
                 if (_nativeRefreshPending) { _nativeRefreshPending = false; _nativeRefreshTimer.Start(); }
             }
         }
+    }
+
+    private async Task<NativeLyricsLookup> ReadNativeLyricsAsync(TrackMetadata track, CancellationToken token)
+    {
+        var local = await Task.Run(() => _nativeProvider.GetNativeLyricsAsync(track, token), token);
+        if (local.Status != NativeLyricsLookupStatus.MissingMetadata || local.CandidateCatalogIds is not { Count: > 0 } ids)
+            return local;
+        AppLog.Write($"Public Apple catalog: resolving {ids.Count} native cache identities; no lyrics or authentication requested.");
+        var metadata = await _publicCatalog.ResolveAsync(ids, token);
+        token.ThrowIfCancellationRequested();
+        AppLog.Write($"Public Apple catalog: resolved {metadata.Count}/{ids.Count} identities.");
+        if (metadata.Count == 0) return local;
+        // The provider still requires complete, unique title/artist/album/duration
+        // evidence for the native resource ID. Partial resolution never guesses.
+        return await Task.Run(() => _nativeProvider.GetNativeLyricsAsync(track, token, metadata), token);
     }
 
     private void Render()

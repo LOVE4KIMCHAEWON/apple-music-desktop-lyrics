@@ -10,7 +10,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <AssemblyName>AppleMusicLyrics</AssemblyName>
-    <Version>0.2.3</Version>
+    <Version>0.2.4</Version>
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>AppleMusicLyrics.App.App</StartupObject>

@@ -10,7 +10,8 @@ public enum NativeLyricsLookupStatus
 }
 
 public sealed record NativeLyricsLookup(NativeLyricsLookupStatus Status, NativeLyricsDocument? Document,
-    string? CatalogId, int LyricFilesInspected, int CatalogFilesInspected, string Message);
+    string? CatalogId, int LyricFilesInspected, int CatalogFilesInspected, string Message,
+    IReadOnlyList<string>? CandidateCatalogIds = null);
 
 /// <summary>
 /// Reads only lyric files and allowlisted public catalog JSON from Apple's existing HTTP cache.
@@ -21,6 +22,7 @@ public sealed partial class AppleNativeLyricsProvider : ILyricsProvider
     private const int MaximumFileBytes = 4 * 1024 * 1024;
     private const int MaximumFiles = 4096;
     private const int MaximumDirectories = 256;
+    private const int MaximumCatalogCandidates = 128;
     private const long MaximumLookupBytes = 64L * 1024 * 1024;
     private readonly IReadOnlyList<string> _cacheRoots;
 
@@ -40,7 +42,7 @@ public sealed partial class AppleNativeLyricsProvider : ILyricsProvider
     }
 
     public async Task<NativeLyricsLookup> GetNativeLyricsAsync(TrackMetadata track,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, IReadOnlyList<NativeCatalogTrack>? additionalCatalog = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var lyricFiles = 0;
@@ -91,11 +93,37 @@ public sealed partial class AppleNativeLyricsProvider : ILyricsProvider
         if (scanTruncated) return Result(NativeLyricsLookupStatus.UnsupportedOrIncomplete, "The native cache exceeds the bounded scan limit.");
         if (incomplete) return Result(NativeLyricsLookupStatus.UnsupportedOrIncomplete,
             "A native cache payload is incomplete, unreadable or unsupported; no native lyrics were selected.");
+        // A cached lyric's explicit resource identity is a lookup candidate, never proof
+        // that it belongs to the playing song. Enrichment supplies public song metadata
+        // only; all original strict matching rules below still apply.
+        var nativeIds = documents.Where(HasValidResourceIdentity).Select(document => document.CatalogId!)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        var unresolvedIds = nativeIds.Where(id => !catalog.Any(candidate => candidate.CatalogId == id && HasCompleteMetadata(candidate)))
+            .ToArray();
+        if (additionalCatalog is not null)
+        {
+            if (documents.Any(document => !HasValidResourceIdentity(document)))
+                return Result(NativeLyricsLookupStatus.Ambiguous,
+                    "Native lyric resource identities are invalid or conflicting; metadata enrichment was not applied.");
+            if (unresolvedIds.Length > MaximumCatalogCandidates || additionalCatalog.Count > MaximumCatalogCandidates)
+                return Result(NativeLyricsLookupStatus.UnsupportedOrIncomplete,
+                    "Native catalog enrichment exceeds the bounded candidate limit.");
+            if (additionalCatalog.Any(candidate => !nativeIds.Contains(candidate.CatalogId, StringComparer.Ordinal) || !HasCompleteMetadata(candidate)))
+                return MissingMetadata("Additional catalog metadata is incomplete or does not identify a cached lyric resource.");
+            // Resolving only the apparent best ID could hide an indistinguishable
+            // second recording. Every previously unresolved native identity must be
+            // covered before an enriched match can be selected.
+            if (unresolvedIds.Any(id => !additionalCatalog.Any(candidate => candidate.CatalogId == id && HasCompleteMetadata(candidate))))
+                return MissingMetadata("Some native lyric catalog identities remain unresolved; no enriched lyrics were selected.");
+            catalog.AddRange(additionalCatalog);
+        }
         var match = NativeTrackMatcher.Match(track, catalog);
         if (match.Status == NativeTrackMatchStatus.Ambiguous)
             return Result(NativeLyricsLookupStatus.Ambiguous, "Native catalog metadata is ambiguous; no native lyrics were selected.");
         if (match.Status != NativeTrackMatchStatus.Matched)
-            return Result(NativeLyricsLookupStatus.MissingMetadata, "No unique native catalog identity matches this track.");
+            return unresolvedIds.Length > MaximumCatalogCandidates
+                ? Result(NativeLyricsLookupStatus.UnsupportedOrIncomplete, "Native catalog enrichment exceeds the bounded candidate limit.")
+                : MissingMetadata("No unique native catalog identity matches this track.");
         var selected = documents.Where(document => document.CatalogId == match.CatalogId).ToArray();
         if (selected.Length == 0)
             return Result(incomplete ? NativeLyricsLookupStatus.UnsupportedOrIncomplete : NativeLyricsLookupStatus.MissingLyrics,
@@ -111,7 +139,18 @@ public sealed partial class AppleNativeLyricsProvider : ILyricsProvider
 
         NativeLyricsLookup Result(NativeLyricsLookupStatus status, string message, string? id = null) =>
             new(status, null, id, lyricFiles, catalogFiles, message);
+
+        NativeLyricsLookup MissingMetadata(string message) =>
+            new(NativeLyricsLookupStatus.MissingMetadata, null, null, lyricFiles, catalogFiles, message, unresolvedIds);
     }
+
+    private static bool HasValidResourceIdentity(NativeLyricsDocument document) =>
+        NativeTrackMatcher.IsCatalogId(document.CatalogId) && document.ResourceType == "syllable-lyrics" &&
+        document.ResourceId == document.CatalogId;
+
+    private static bool HasCompleteMetadata(NativeCatalogTrack candidate) =>
+        NativeTrackMatcher.IsCatalogId(candidate.CatalogId) &&
+        NativeTrackMatcher.Match(candidate.Metadata, [candidate]).Status == NativeTrackMatchStatus.Matched;
 
     public static IReadOnlyList<string> DiscoverCacheRoots()
     {

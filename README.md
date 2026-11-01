@@ -2,7 +2,7 @@
 
 A portable Windows desktop utility that follows Apple's official Apple Music app and displays synchronized lyrics on a transparent desktop overlay. Built with C#, .NET 8, WPF, Windows Media Control, and Win32.
 
-Version **0.2.3** provides separate English and Simplified Chinese portable editions, with localized Settings, tray menus, status messages, validation and edit controls. Both editions use the same binaries and lyrics engine. It retains startup recovery, persistent global timing calibration and capture-time playback interpolation. Native originals, translations and pronunciation still come from Apple's existing cache; LRCLIB remains an original-only fallback. Translation and pronunciation controls are independent by design. Following Apple's visibility switches is outside this app's scope. Previous release archives remain preserved.
+Version **0.2.4** fixes a missing-lyrics case where Apple has cached the native lyric payload but not enough catalog metadata to identify its song. A bounded, unauthenticated Apple public catalog lookup can supply that missing metadata; strict track matching still applies before any lyric is shown. Originals, translations and pronunciation remain read-only Apple cache data, with LRCLIB as an original-only fallback. Separate English and Simplified Chinese portable editions retain startup recovery, persistent global timing calibration and independent translation/pronunciation controls. The app does not follow Apple's visibility switches. Previous release archives remain preserved.
 
 [简体中文说明](README.zh-CN.md)
 
@@ -13,7 +13,7 @@ Version **0.2.3** provides separate English and Simplified Chinese portable edit
 3. Open Apple Music for Windows and play a song. When safely matched synchronized lyrics are available, the overlay appears automatically near the bottom of the selected display; the primary display is the default.
 4. Use the pink two-line system tray icon for all controls. Double-click it to unlock and recover the overlay.
 
-Choose `AppleMusicDesktopLyrics-0.2.3-win-x64.zip` for English or `AppleMusicDesktopLyrics-0.2.3-win-x64-zh-CN.zip` for Chinese. Extract editions into separate folders. The Chinese folder includes `ui-language.txt`, so even a direct EXE launch defaults to Chinese. Its launcher also passes `--language zh-CN`; `--language en-US` explicitly selects English. Interface language is saved separately from native lyric language preferences. Exit the running instance before switching a shared profile's interface language; repeat-launch recovery opens the existing instance using its current interface language.
+Choose `AppleMusicDesktopLyrics-0.2.4-win-x64.zip` for English or `AppleMusicDesktopLyrics-0.2.4-win-x64-zh-CN.zip` for Chinese. Extract editions into separate folders. The Chinese folder includes `ui-language.txt`, so even a direct EXE launch defaults to Chinese. Its launcher also passes `--language zh-CN`; `--language en-US` explicitly selects English. Interface language is saved separately from native lyric language preferences. Exit the running instance before switching a shared profile's interface language; repeat-launch recovery opens the existing instance using its current interface language.
 
 The published build is self-contained; no separate .NET installation is required. Source builds require the .NET 8 SDK. Windows 10 build 19041 or later, or Windows 11, x64 is required for the app. The standalone diagnostic also supports build 17763. Run in the same interactive user session as Apple Music without administrator elevation.
 
@@ -54,7 +54,9 @@ The app enumerates `GetSessions()` and identifies Apple Music independently of `
 
 The engine retains each observation's monotonic capture time through dispatcher queuing. Playing advances through that queue delay; pausing freezes at capture time; resuming excludes the paused interval. Older observations cannot restore an obsolete track or status. Forward/backward discontinuities recalibrate immediately, and lyric selection uses binary search. The visible playback timer runs every 50 ms and text appears at full opacity immediately. Remote seek control is neither required nor attempted. Metadata/timeline updates may arrive separately; obsolete track requests are cancelled.
 
-The native provider reads only allowlisted lyric and public catalog JSON from Apple Music's existing `AC\INetCache` directories. It associates the playing metadata with a unique cached catalog ID using exact normalized title, artist, and album, compatible recording-version markers, and duration within three seconds. That ID must agree with the native lyric resource. It does not choose the newest file or guess from lyric duration. Missing metadata, multiple matching IDs, conflicting payloads, partial writes, and unsupported formats withhold native output.
+The native provider reads only allowlisted lyric and public catalog JSON from Apple Music's existing `AC\INetCache` directories. It first tries local catalog metadata. If that is insufficient, the public catalog resolver looks up only numeric catalog IDs already present in the native lyric candidates through Apple's unauthenticated iTunes lookup endpoint. It retrieves public song metadata, not lyrics, credentials, media URLs or audio. The resolver caches metadata for 30 days in the app's own data folder, limits candidates to 128 and batches to 20 IDs, spaces requests by at least three seconds, uses an eight-second timeout, respects HTTP 429 `Retry-After`, and cancels obsolete work.
+
+A unique identity still requires exact normalized title, artist and album, compatible recording-version markers, and duration within three seconds. That ID must agree with the native lyric resource. Every unresolved candidate must have usable metadata before selecting a result; incomplete lookup, multiple matching IDs, conflicting payloads, partial writes and unsupported formats withhold native output. It does not choose the newest file or guess from lyric duration. This fixes missing identity metadata only when the native lyric payload already exists; it cannot fetch an absent Apple lyric payload. See Apple's [ID-based lookup documentation](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/LookupExamples.html).
 
 Native TTML preserves all language tracks, original timestamps, timed spans, raw attributes, and explicit key references. Supplemental text joins the original through `text/@for` and `p/@itunes:key`, not row position. Unknown Apple offset metadata is retained without applying undocumented semantics. The app watches for later cache arrivals, cancels obsolete requests, and can replace a pending original-only fallback after a validated native match arrives.
 
@@ -65,10 +67,10 @@ When native matching is unavailable, LRCLIB lookup starts with `/api/get` using 
 The approved default HTTP identifier is:
 
 ```text
-AppleMusicDesktopLyrics/0.2.3 (https://github.com/LOVE4KIMCHAEWON)
+AppleMusicDesktopLyrics/0.2.4 (https://github.com/LOVE4KIMCHAEWON)
 ```
 
-The public profile remains in this identifier even if the source repository is private. It is editable in Settings. Requests are serialized with at least one second between starts, bounded timeouts, at most two retries per endpoint, and full `Retry-After` handling. A 429 does not trigger an extra search request to evade the limit. A failed lookup waits for a track change or tray retry rather than polling the service.
+The approved public profile remains in this identifier; the project repository is also public. It is editable in Settings. LRCLIB requests are serialized with at least one second between starts, bounded timeouts, at most two retries per endpoint, and full `Retry-After` handling. A 429 does not trigger an extra search request to evade the limit. A failed lookup waits for a track change or tray retry rather than polling the service. Apple public metadata lookup has its own stricter bounds described above.
 
 ## Data and privacy
 
@@ -76,7 +78,7 @@ By default, configuration, per-track offsets, bounded logs, app discovery, and l
 
 Configuration is JSON, saved atomically with range validation and recovery from malformed files. Online cache entries expire after 30 days and have a 64 MB quota. Explicitly imported local LRC sheets are retained separately. Network responses and individual cache entries are bounded to 4 MB. These app-owned cache limits do not delete or alter Apple's cache. Native scans also have file, directory, and total-read limits and reject incomplete scans.
 
-Only track title, artist, album, and duration are sent to LRCLIB. Native lyric lookup makes no authenticated Apple network requests. The app does not require or extract Apple IDs, passwords, cookies, or private tokens. It observes Windows media state and does not read audio, access DRM content, inject into Apple Music, or modify Apple Music files. The Apple cache schema is an implementation detail, not a supported public Apple lyrics API. Logs and app-owned cache may contain listening metadata and should be reviewed before sharing.
+Only track title, artist, album, and duration are sent to LRCLIB. Apple's public lookup receives numeric catalog IDs already exposed by native cache candidates; all native lyric text still comes from local read-only files. Native lyric lookup makes no authenticated Apple network requests. The app does not require or extract Apple IDs, passwords, cookies, or private tokens. It observes Windows media state and does not read audio, access DRM content, inject into Apple Music, or modify Apple Music files. The Apple cache schema is an implementation detail, not a supported public Apple lyrics API. Logs and app-owned cache may contain listening metadata and should be reviewed before sharing.
 
 ## Build and test
 
@@ -90,7 +92,7 @@ From the repository root in PowerShell:
 .\scripts\Build.ps1 -Publish -Offline
 ```
 
-`Build.ps1` restores dependencies, runs tests, and builds the WPF application and diagnostic. `-Publish` uses the project version; currently it produces `artifacts\apple-music-desktop-lyrics-0.2.3-win-x64` and `artifacts\apple-music-desktop-lyrics-0.2.3-win-x64-zh-CN`, each containing both executables and the self-contained runtime. Existing release archives/directories are preserved. `scripts\Package-Release.ps1` packages both portable editions, source and checksums and refuses to overwrite archives. Build caches stay in `.tools`/`.nuget`. The local SDK is preferred when available. Initial dependencies need Internet access. `-Offline` uses cached packages and skips the network vulnerability audit for that restore only. Publishing disables trimming for WPF/WinRT compatibility.
+`Build.ps1` restores dependencies, runs tests, and builds the WPF application and diagnostic. `-Publish` uses the project version; currently it produces `artifacts\apple-music-desktop-lyrics-0.2.4-win-x64` and `artifacts\apple-music-desktop-lyrics-0.2.4-win-x64-zh-CN`, each containing both executables and the self-contained runtime. Existing release archives/directories are preserved. `scripts\Package-Release.ps1` packages both portable editions, source and checksums and refuses to overwrite archives. Build caches stay in `.tools`/`.nuget`. The local SDK is preferred when available. Initial dependencies need Internet access. `-Offline` uses cached packages and skips the network vulnerability audit for that restore only. Publishing disables trimming for WPF/WinRT compatibility.
 
 For just the feasibility diagnostic:
 
@@ -122,7 +124,7 @@ The explicit audit briefly changes and restores this app's own display flags and
 
 See [validation](docs/VALIDATION.md), [known limitations](docs/KNOWN-LIMITATIONS.md), [native lyrics](docs/NATIVE-LYRICS.md), and [Phase 1 findings](docs/PHASE1-FINDINGS.md).
 
-All **254 tests passed** for 0.2.3, retaining all prior tests and adding interface-language precedence, resource loading, translated numeric templates and persistence without changing timing/native language choices. See [bilingual validation](docs/VALIDATION-0.2.3.md) and [startup validation](docs/VALIDATION-0.2.2.md). Previous Windows captures matched live Hurt with +1750/+2000 ms and retained calibration across restart. Listening-based accuracy, physical click-through/focus, mixed-DPI hardware, fresh uncached-song availability and networking restrictions remain documented limits. The standalone diagnostic and engineering logs remain in English.
+See [v0.2.4 validation](docs/VALIDATION-0.2.4.md) for the final automated and Windows integration results; the [release notes](docs/RELEASE-0.2.4.md) explain the missing-metadata fix. The retained v0.2.3 suite had 254 passing tests, including interface-language precedence, resource loading and persistence. Previous Windows captures matched live Hurt with +1750/+2000 ms and retained calibration across restart. Listening-based accuracy, physical click-through/focus, mixed-DPI hardware and fresh uncached-song availability remain documented limits. The standalone diagnostic and engineering logs remain in English.
 
 ## Source layout
 
@@ -132,7 +134,7 @@ All **254 tests passed** for 0.2.3, retaining all prior tests and adding interfa
 - `tests/AppleMusicLyrics.Core.Tests`: unit tests with simulated clocks and HTTP responses.
 - `scripts`: repeatable Windows build and diagnostics.
 
-The intended repository is `LOVE4KIMCHAEWON/apple-music-desktop-lyrics`, private by default. This workspace contains no credentials. SDKs, caches, build output, logs, portable data, and test artifacts are excluded by `.gitignore`.
+The public repository is [LOVE4KIMCHAEWON/apple-music-desktop-lyrics](https://github.com/LOVE4KIMCHAEWON/apple-music-desktop-lyrics). Credentials, SDKs, caches, build output, logs, portable data and test artifacts are excluded from source publishing by `.gitignore` and the release packager.
 
 ## References
 
