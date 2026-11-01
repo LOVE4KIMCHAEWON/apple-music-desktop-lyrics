@@ -1,0 +1,49 @@
+<Window x:Class="AppleMusicLyrics.App.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Apple Music Desktop Lyrics" Width="1000" SizeToContent="Height"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+        Background="Transparent" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
+        Focusable="False" UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Border x:Name="EditOutline" Padding="16,10,16,12" CornerRadius="12" BorderThickness="1"
+            BorderBrush="Transparent" Background="Transparent" MouseLeftButtonDown="OnDragMouseDown">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <DockPanel x:Name="EditControls" Grid.Row="0" Margin="0,0,0,8" Visibility="Collapsed" LastChildFill="True">
+                <Button DockPanel.Dock="Right" Content="Lock position" Padding="12,4" Cursor="Hand"
+                        Focusable="False" Click="OnLockClick" />
+                <TextBlock Text="Drag to move · Settings are in the tray" Foreground="#DDFFFFFF"
+                           FontFamily="Segoe UI" FontSize="12" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock x:Name="ActiveLine" Grid.Row="1" FontFamily="Segoe UI" FontSize="28"
+                       Foreground="White" FontWeight="SemiBold" TextAlignment="Center"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Padding="0,2"
+                       MinHeight="39" IsHitTestVisible="False">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="Black" ShadowDepth="1" BlurRadius="4" Opacity="0.95" />
+                </TextBlock.Effect>
+            </TextBlock>
+            <TextBlock x:Name="UpcomingLine" Grid.Row="2" FontFamily="Segoe UI" FontSize="23"
+                       Foreground="#B8FFFFFF" TextAlignment="Center" Margin="0,4,0,0"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Padding="0,2"
+                       MinHeight="33" IsHitTestVisible="False">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="Black" ShadowDepth="1" BlurRadius="4" Opacity="0.95" />
+                </TextBlock.Effect>
+            </TextBlock>
+            <TextBlock x:Name="TertiaryLine" Grid.Row="3" FontFamily="Segoe UI" FontSize="23"
+                       Foreground="#B8FFFFFF" TextAlignment="Center" Margin="0,4,0,0"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Padding="0,2"
+                       MinHeight="33" IsHitTestVisible="False" Visibility="Collapsed">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="Black" ShadowDepth="1" BlurRadius="4" Opacity="0.95" />
+                </TextBlock.Effect>
+            </TextBlock>
+        </Grid>
+    </Border>
+</Window>

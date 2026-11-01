@@ -1,0 +1,15 @@
+.tools/
+.nuget/
+**/bin/
+**/obj/
+artifacts/
+diagnostics/
+data/
+TestResults/
+*.trx
+*.binlog
+*.log
+*.tmp
+.vs/
+*.user
+*.lnk

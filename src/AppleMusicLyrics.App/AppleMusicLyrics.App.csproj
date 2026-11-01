@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>AppleMusicLyrics</AssemblyName>
+    <Version>0.2.3</Version>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>AppleMusicLyrics.App.App</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="UiText.*.zh-CN.json" WithCulture="false" />
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="9" />
+    <ProjectReference Include="..\AppleMusicLyrics.Core\AppleMusicLyrics.Core.csproj" />
+    <Compile Include="..\AppleMusicLyrics.Probe\NativeAppIdentity.cs" Link="Media\NativeAppIdentity.cs" />
+    <Content Include="..\..\scripts\Discover-AppleMusic.ps1" Link="scripts\Discover-AppleMusic.ps1" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

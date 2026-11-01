@@ -1,0 +1,117 @@
+<Window x:Class="AppleMusicLyrics.App.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lyrics settings" Width="540" Height="750" MinWidth="450" MinHeight="480"
+        WindowStartupLocation="CenterScreen" Background="#F6F7FA" FontFamily="Segoe UI"
+        FontSize="13" ResizeMode="CanResize" ShowInTaskbar="True">
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="BorderBrush" Value="#D3D7E0" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="16,7" />
+            <Setter Property="MinWidth" Value="85" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="24,20,24,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Make the lyrics yours" FontSize="23" FontWeight="SemiBold" Foreground="#1E2434" />
+            <TextBlock Text="Your lyrics above a clear desktop." Margin="0,5,0,0" Foreground="#687085" />
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">
+            <StackPanel>
+                <TextBlock Text="Synchronization · all songs" FontSize="15" FontWeight="SemiBold" Foreground="#30384A" Margin="0,0,0,12" />
+                <TextBlock Text="Global timing offset (milliseconds)" Margin="0,0,0,5" />
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBox x:Name="OffsetBox" Grid.Column="0" ToolTip="Positive values show lyrics earlier; negative values show them later. Applies to every song." />
+                    <Button Grid.Column="2" Content="Apply global offset" Click="OnApplyGlobalOffset" />
+                </Grid>
+                <UniformGrid Columns="3" Margin="0,0,0,8">
+                    <Button Content="Earlier +250 ms" Tag="250" Click="OnStepGlobalOffset" Margin="0,0,6,0" Padding="8,7" />
+                    <Button Content="Later −250 ms" Tag="-250" Click="OnStepGlobalOffset" Margin="0,0,6,0" Padding="8,7" />
+                    <Button Content="Reset global to 0" Tag="0" Click="OnPresetGlobalOffset" Padding="8,7" />
+                </UniformGrid>
+                <UniformGrid Columns="2" Margin="0,0,0,6">
+                    <Button Content="Advance lyrics 1750 ms" Tag="1750" Click="OnPresetGlobalOffset" Margin="0,0,6,0" Padding="8,7" />
+                    <Button Content="Advance lyrics 2000 ms" Tag="2000" Click="OnPresetGlobalOffset" Padding="8,7" />
+                </UniformGrid>
+                <TextBlock Text="Lyrics late? A positive offset shows them earlier. Negative values show them later. Global controls apply and save immediately for every song, including after restarting. This adds to the current song's separate tray offset; other settings below still use Apply or Save." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,0,0,6" />
+                <TextBlock x:Name="GlobalOffsetStatus" Foreground="#356B43" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,20" />
+                <Separator Margin="0,0,0,18" />
+                <TextBlock Text="Native Apple Music lyrics" FontSize="15" FontWeight="SemiBold" Foreground="#30384A" Margin="0,0,0,12" />
+                <CheckBox x:Name="ShowTranslationBox" Content="Show translation" Margin="0,0,0,10" />
+                <CheckBox x:Name="ShowPronunciationBox" Content="Show pronunciation" Margin="0,0,0,10" />
+                <TextBlock Text="These independent overlay settings use Apple's cached text. Neither selected shows the current and next original lines. Both selected adds pronunciation and translation below the original, expanding upward." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,0,0,13" />
+                <TextBlock Text="Translation language (optional)" Margin="0,0,0,5" />
+                <TextBox x:Name="TranslationLanguageBox" ToolTip="BCP 47 tag, such as en-US or zh-Hans. Leave empty for automatic selection." Margin="0,0,0,13" />
+                <TextBlock Text="Pronunciation language (optional)" Margin="0,0,0,5" />
+                <TextBox x:Name="PronunciationLanguageBox" ToolTip="BCP 47 tag, such as ko-Latn, ja-Latn, or ja-Kana. Leave empty for automatic selection." />
+                <TextBlock Text="Language tags select available native tracks. Missing requested text falls back to original lyrics; the tray reports availability. Apply changes to update the overlay." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,6,0,20" />
+                <Separator Margin="0,0,0,18" />
+                <TextBlock Text="Appearance" FontSize="15" FontWeight="SemiBold" Foreground="#30384A" Margin="0,0,0,12" />
+                <TextBlock Text="Font" Margin="0,0,0,5" />
+                <ComboBox x:Name="FontFamilyBox" IsEditable="True" Height="32" Margin="0,0,0,13" />
+                <Grid Margin="0,0,0,13">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Active line size" Margin="0,0,0,5" />
+                        <TextBox x:Name="ActiveSizeBox" ToolTip="14 to 72 device-independent pixels" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Additional line size" Margin="0,0,0,5" />
+                        <TextBox x:Name="UpcomingSizeBox" ToolTip="12 to 64 device-independent pixels" />
+                    </StackPanel>
+                </Grid>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Active line color" Margin="0,0,0,5" />
+                        <TextBox x:Name="ActiveColorBox" ToolTip="#RRGGBB or #AARRGGBB" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Additional line color" Margin="0,0,0,5" />
+                        <TextBox x:Name="UpcomingColorBox" ToolTip="#RRGGBB or #AARRGGBB" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="Use a color name, #RRGGBB, or #AARRGGBB with transparency." Foreground="#687085" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,13" />
+                <TextBlock Text="Overlay width" Margin="0,0,0,5" />
+                <TextBox x:Name="WidthBox" Margin="0,0,0,13" ToolTip="360 to 2400 device-independent pixels; fitted to the monitor" />
+                <DockPanel Margin="0,0,0,5">
+                    <TextBlock Text="Opacity" />
+                    <TextBlock Text="{Binding ElementName=OpacitySlider, Path=Value, StringFormat={}{0:P0}}" HorizontalAlignment="Right" Foreground="#687085" />
+                </DockPanel>
+                <Slider x:Name="OpacitySlider" Minimum="0.2" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,0,0,15" />
+                <CheckBox x:Name="LockedBox" Content="Lock position and let clicks pass through" Margin="0,0,0,20" />
+                <Separator Margin="0,0,0,18" />
+                <TextBlock Text="Position" FontSize="15" FontWeight="SemiBold" Foreground="#30384A" Margin="0,0,0,12" />
+                <ComboBox x:Name="PositionModeBox" Height="32" DisplayMemberPath="DisplayName" SelectedValuePath="Value" Margin="0,0,0,13" />
+                <TextBlock Text="Monitor for default positioning" Margin="0,0,0,5" />
+                <ComboBox x:Name="MonitorBox" Height="32" DisplayMemberPath="DisplayName" SelectedValuePath="DeviceName" Margin="0,0,0,6" />
+                <TextBlock Text="Default stays centered near the bottom as displays change. Dragging selects Custom, which keeps your location within the visible working area. Reset position returns to Default." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,0,0,20" />
+                <Separator Margin="0,0,0,18" />
+                <TextBlock Text="Original lyrics fallback" FontSize="15" FontWeight="SemiBold" Foreground="#30384A" Margin="0,0,0,12" />
+                <TextBlock Text="LRCLIB project URL or contact email" Margin="0,0,0,5" />
+                <TextBox x:Name="ContactBox" />
+                <TextBlock Text="LRCLIB supplies original lyrics when no native cache match is available. It does not generate translations or pronunciation. A public project URL or contact email enables online lookup. Local .lrc import also works without it." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,6,0,20" />
+                <Separator Margin="0,0,0,18" />
+                <CheckBox x:Name="StartWithWindowsBox" Content="Start with Windows" Margin="0,0,0,8" />
+                <TextBlock Text="The tray menu can always unlock, show, or reset the overlay." TextWrapping="Wrap" Foreground="#687085" FontSize="11" Margin="0,0,0,10" />
+            </StackPanel>
+        </ScrollViewer>
+        <TextBlock x:Name="ErrorText" Grid.Row="2" Foreground="#B92335" TextWrapping="Wrap" Margin="0,10,0,6" Visibility="Collapsed" />
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" IsCancel="True" Margin="0,0,8,0" />
+            <Button Content="Apply" Click="OnApply" Margin="0,0,8,0" />
+            <Button Content="Save" Click="OnSave" IsDefault="True" />
+        </StackPanel>
+    </Grid>
+</Window>
