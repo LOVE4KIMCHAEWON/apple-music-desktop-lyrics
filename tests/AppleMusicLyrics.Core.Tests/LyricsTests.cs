@@ -146,7 +146,7 @@ public sealed class LyricsProviderTests
             Assert.Contains("artist_name=Artist", request.RequestUri.Query);
             Assert.Contains("album_name=Album", request.RequestUri.Query);
             Assert.Contains("duration=180", request.RequestUri.Query);
-            Assert.Contains("AppleMusicDesktopLyrics/0.2.4", string.Join(' ', request.Headers.GetValues("User-Agent")));
+            Assert.Contains("AppleMusicDesktopLyrics/0.2.5", string.Join(' ', request.Headers.GetValues("User-Agent")));
             return Task.FromResult(Json(Candidate()));
         });
         using var client = new HttpClient(handler);

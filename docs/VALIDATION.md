@@ -1,57 +1,77 @@
-# Validation — 0.2.4 native catalog identity recovery
+# Validation — 0.2.5 bounded storefront recovery
 
-Date: 1 November 2026, Australia/Sydney. Windows 10 build 19045 x64; Apple Music 1.1792.39681.0. Previous release archives remain available unchanged.
+Date: 1 November 2026, Australia/Sydney. Windows 10 build 19045 x64; Apple Music 1.1792.39681.0. This report describes the final v0.2.5 binaries, rather than just the earlier root-cause diagnostic.
 
-## Confirmed failure
+## Scope and preserved behavior
 
-The user reported that the Chinese desktop overlay had disappeared. The running application was not crashed or hidden by preference: `IsVisible=true`, `IsLocked=true`, and global correction was +1250 ms.
+The patch extends the existing unauthenticated public Apple catalog metadata resolver. It does not retrieve network Apple lyrics, add a lyrics provider, generate translations/pronunciation, operate Apple's lyrics panel or change Apple's files. Native text still comes from read-only local cache files.
 
-A passive SMTC capture found ILLIT's **Karitekita Neko (Do the Dance) [Japanese Ver.]**, album **Toki Yo Tomare - EP**, actively playing with a fresh usable timeline and duration 188 seconds. All 15 sampled timeline observations were usable. The native lyric resource `1833184650` existed locally, but allowlisted local catalog metadata could not associate it with the playing track. The original-only LRCLIB fallback `36451680` contained plain lyrics and no synchronized lines. Locked mode therefore hid the overlay rather than fabricate timing or guess the native resource identity.
+The primary storefront remains US. Only a well-formed HTTP 200 response with missing IDs permits alternatives. After primary resolution, language/pronunciation hints from the remaining unresolved candidates precede the Windows region and bounded KR/JP/TW defaults. At most four storefronts are queried. HTTP failures, timeouts, malformed/conflicting responses and rate limits cannot be bypassed by switching countries.
 
-Apple's documented unauthenticated public ID lookup returned the exact title, artist and album in US/Australian metadata, with duration 188.640 seconds. The Japanese storefront returned localized Japanese names; those are not treated as interchangeable with SMTC names without exact normalized matching.
+App-owned regional metadata keeps separate filenames and validated source/country provenance, with the existing 30-day lifetime. Local provenance checking is separate from the network list: up to 32 canonical regional cache files are inspected for known identity conflicts; a 33rd file or incomplete inventory withholds resolution. Existing valid US cache entries remain compatible. Original strict catalog ID, normalized title/artist/album, recording-version, duration, uniqueness and complete-candidate requirements remain in force.
 
-## Fix
+Read-only comparison with the preserved v0.2.4 source archive confirmed unchanged overlay/settings UI, settings schema, lyric presentation, strict native matcher, playback clock and timing-offset implementation. The personal v0.2.4 settings file remained byte-for-byte unchanged. The live QA profile copied its existing **+1250 ms** global correction and independent translation-on/pronunciation-off settings; no new calibration was applied. Clean-install defaults are unchanged.
 
-- Local catalog matching remains the first choice.
-- Only unresolved catalog IDs already exposed by valid native lyric resource identities are sent to `https://itunes.apple.com/lookup` for public identity metadata. No lyric endpoint, preview, artwork, credentials or authenticated Apple API is used.
-- The resolver bounds IDs, batches, response size and cache size; serializes requests with monotonic three-second spacing; uses an eight-second HTTP timeout; respects server Retry-After; and propagates cancellation after track changes.
-- Validated public metadata is cached for 30 days in this app's own `data/public-catalog`. Apple's cache remains read-only.
-- Every unresolved native identity must have complete additional metadata before enrichment is used. Original strict title, artist, album, recording-version, duration and unique-resource-ID checks still apply. Partial or contradictory metadata cannot select a likely-looking lyric file.
-- The same path is used for initial lookup and late-cache refresh. LRCLIB remains original-only fallback when native identity or data cannot be safely established.
+## Complete automated suite
 
-This fixes missing identity metadata when a usable lyric payload already exists. It cannot obtain an uncached Apple lyric payload or guarantee cache population with Apple's panel closed.
+**369/369 passed; zero failures or skips.** All 306 previous cases were retained, with 63 additional cases. Coverage includes:
 
-## Automated verification
+- Whiplash `1772644601`: US empty, KR exact public identity, strict native selection, preserved timestamps/language tags/explicit line keys and all four display combinations.
+- Rejection for each incorrect ID, title, artist, album, recording version or duration; unresolved extra candidates; indistinguishable resource IDs; local/regional conflicts and conflicting duplicate responses.
+- Relevant-region ordering, resolved candidates not consuming fallback slots, only missing IDs in later requests and the four-storefront bound.
+- Separate storefront cache provenance, restart/offline reuse, compatible normalization, known conflicting CN metadata outside the network plan, and the 32/33-file inventory boundary.
+- Existing metadata/parser/cache regressions, rate spacing, shared Retry-After cooldown, timeout, malformed envelopes and HTTP errors including non-200 successful status codes.
+- Cancellation during regional requests, coordinator queuing and spacing, plus a later current-track request remaining usable.
+- A real `NativeCacheMonitor` watching a test-owned directory: late synthetic cache arrival emits a signal and a subsequent provider/resolver probe obtains native lyrics. This does not simulate every WPF dispatcher/LRCLIB interleaving.
 
-**306/306 tests passed**, zero failures or skips. All 254 previous cases were retained. New cases cover strict native enrichment (20) and the public metadata resolver (32): four-field/version mismatches, conflicting and unresolved IDs, bounded candidates, incomplete writes, ID validation, irrelevant/wrong-ID responses, malformed JSON, duplicate fields, response limits, batch requests, local cache/restart/expiration, rate limiting, Retry-After, timeout and cancellation.
+Test lyric strings are synthetic. No Apple cache payload or private diagnostic log was added as a fixture.
 
-Core, WPF application and diagnostic builds completed with zero warnings and errors. The full suite ran outside the test sandbox because local named-pipe clients are denied inside it. Restore used cached dependencies with `-Offline`; online dependency vulnerability auditing was unavailable.
+Command: `scripts/Build.ps1 -Publish -Offline`. Core tests, the WPF application and standalone diagnostic built successfully, with no reported warnings or errors. The full suite ran outside the filesystem sandbox because Windows named-pipe clients used by the existing IPC tests are denied inside it. Restore used cached dependencies; online dependency vulnerability auditing was not performed in offline mode. Both portable editions are self-contained Windows x64 builds using identical application binaries.
 
-## Actual Windows integration
+## Actual Windows verification: Whiplash
 
-The self-contained Chinese 0.2.4 EXE observed the same live ILLIT song without any Apple Music playback command or lyrics-panel operation:
+The final Chinese portable EXE passively observed live **Whiplash — aespa**, album **Whiplash - The 5th Mini Album - EP**, duration 183 seconds. The user had already opened Apple's lyrics panel during the investigation. No panel or playback control was operated by the diagnostic. The app used an isolated QA profile with no preloaded public catalog cache.
 
 | Check | Observed result |
 | --- | --- |
-| Public candidate identity resolution | 3/3 resolved from the official public API |
-| Native match | `1833184650`, source Apple Music native cache |
-| Synchronized original entries | 81 |
-| Native pronunciation | `ja-Latn` |
-| Native translation | None in the observed cached payload |
-| Global timing correction | +1250 ms, retained |
-| Restart with public metadata cache | 3/3 metadata entries resolved from the app cache; same native match |
+| Primary US response | HTTP 200, four of five candidate IDs resolved; Whiplash remained missing |
+| Next storefront | KR, HTTP 200, remaining ID `1772644601` resolved |
+| Recording metadata | Same ID/title/artist/album, 183.227 seconds; unchanged strict validation passed |
+| Native source | Apple Music native cache, `Matched`, ID `1772644601` |
+| Synchronized original entries | 82 |
+| Native translation | `zh-Hans` |
+| Native pronunciation | `ko-Latn` |
+| Both flags off | Original + upcoming, two rows |
+| Translation only | Original + translation, two rows |
+| Pronunciation only | Original + pronunciation, two rows |
+| Both flags on | Original + pronunciation + translation, three rows |
+| Supplemental limitation | None for any audited combination |
+| Bottom anchoring | Physical bottom remained 1948 px across all combinations; the third row expanded upward |
+| Restart | Same native match; four US identities and one KR identity loaded from their separate caches, no HTTP catalog request |
+| Persisted preferences | Global +1250 ms, translation on, pronunciation off retained |
 
-An isolated display audit returned original/upcoming for neither flag, original/upcoming plus a translation-unavailable limitation for translation only, original/pronunciation for pronunciation only, and original/upcoming with a limitation when both were requested. That is the expected fallback for a payload containing pronunciation but no translation; it is not evidence of missing row alignment.
+The real WPF/Win32 audit reported a visible window, opaque lyric glyph pixels in the configured color, transparent corner pixels, topmost/layered/click-through/non-activating styles, and an underlying window at the sampled glyph position. The overlay was not the foreground window. The observed primary display was 3840×2160 at 225% scaling. These passive observations do not verify physical mouse clicks, every focus scenario, other resolutions/scaling combinations, mixed-DPI monitors or subjective listening alignment. No desktop screenshot inspection is claimed.
 
-The personal profile was copied to the new version after backup. A visible verification run reported both WPF `IsVisible=true` and native `IsWindowVisible=true`; it rendered an opaque lyric pixel in the configured pink color. Bounds were `(795,1699)–(3045,1948)` on the observed 3840×2160 primary display at 225% DPI scaling. The four outer pixels remained fully transparent; layered, topmost, click-through and non-activating styles were set. Passive WindowFromPoint at a rendered lyric pixel identified the underlying window, not the overlay. The normal instance was then restarted and again matched the same native song using cached public metadata.
+An earlier pre-final candidate also recovered Whiplash through TW after a redundant JP query. That run prompted the final ordering regression: alternatives now use only IDs still missing after the primary response. The final published binaries were rebuilt, the complete 369-case suite rerun, and the US→KR live check above performed afterwards.
 
-These are actual Windows rendering/style observations. They do not establish physical mouse clicks, every focus scenario, monitor disconnection, mixed-DPI behavior, all requested resolution/scaling combinations or subjective audio alignment. The Computer Use screenshot interface timed out on both capture attempts; no claim is made that a full desktop screenshot was visually inspected during this repair.
+## Release and rollback
 
-## Manual confirmation
+English and Chinese portable folders, source code, English/Chinese READMEs, versioned validation and release notes are included in the release artifacts. Packaging excludes personal data, logs, diagnostics, Apple cache files, credentials, development tools and build intermediates. Source staging uses a separate `release/v0.2.5` branch based on the preserved v0.2.4 source commit.
 
-1. Use the updated Chinese shortcut while the cached ILLIT song plays. Confirm original lyrics are visible and follow playback.
-2. Enable pronunciation alone to show the native Japanese romanization. Translation is absent in this observed payload, so requests for it correctly fall back to originals with a tray explanation.
-3. Pause/resume, seek forward/backward, change songs and restart; confirm +1250 ms remains saved and obsolete requests cannot restore another song's lyrics.
-4. Test a song with native lyric data but missing local identity metadata, then repeat offline using the app's public metadata cache. A song with no native lyric payload still needs an original-only fallback or local synchronized LRC.
+The English portable, Chinese portable and source archives for v0.2.4 were checked against their existing SHA-256 manifest and remained unchanged. Older releases are retained. Private evidence stays outside the release allowlist; only metadata/count summaries are reproduced here.
 
-Private evidence: `diagnostics/v0.2.4`, plus the new portable profile's local diagnostic files. None is included in source or release ZIPs. Historical validation remains in the versioned reports.
+## Unresolved and unverified
+
+**Fresh-track native cache availability with Apple's lyrics panel closed remains unresolved.** This patch identifies an existing payload; it cannot fetch an absent Apple lyric payload or establish whether Apple writes one for every new song without opening the panel. A cache miss does not mean the official service has no lyrics. The app never opens the panel automatically. LRCLIB remains an explicitly original-only fallback and cannot supply Apple's translation/pronunciation.
+
+Live pause/resume, physical seek input, rapid track changes during network activity and a new real Apple cache write were not induced during this patch's final passive Whiplash run. Their existing logic is preserved; simulated cancellation/seeking and the synthetic late-file watcher are covered by tests. Full WPF race interleavings, physical click-through/focus and mixed-DPI/display-change acceptance remain manual items. The finite storefront list and strict localized metadata checks can still leave a valid recording unresolved; no partial identity is guessed.
+
+## Short manual checklist
+
+1. Exit the old tray instance, extract the new portable ZIP completely, and retain a copy of the old profile. Copy `data/settings.json` into the new folder if preserving personal calibration. Run `Run-Portable.cmd`; check the saved global correction and independent flags before changing anything.
+2. Play cached Whiplash. Confirm the tray identifies Apple native cache and exercise off/off, on/off, off/on and on/on. Expect 2/2/2/3 rows and a fixed bottom edge. Restart and confirm settings/native matching persist.
+3. Pause/resume, seek forward/backward and switch songs rapidly while a lookup is pending. Confirm lyrics follow the current track and old supplemental text never returns. Recheck the saved global correction.
+4. Lock the overlay and click/type in an app underneath it; confirm physical click-through and focus. Test custom/default positions across available resolution/DPI/monitor changes; use tray Reset position for recovery.
+5. Separately test a genuinely fresh track with Apple's panel closed. Record whether its payload appears; open the panel only manually if desired and compare afterwards. Keep that availability result separate from this regional identity fix; do not delete or edit Apple's cache.
+
+See [native integration notes](NATIVE-LYRICS.md), [known limitations](KNOWN-LIMITATIONS.md) and [release notes](RELEASE-0.2.5.md).

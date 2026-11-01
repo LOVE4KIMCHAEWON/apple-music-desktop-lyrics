@@ -11,7 +11,8 @@ public enum NativeLyricsLookupStatus
 
 public sealed record NativeLyricsLookup(NativeLyricsLookupStatus Status, NativeLyricsDocument? Document,
     string? CatalogId, int LyricFilesInspected, int CatalogFilesInspected, string Message,
-    IReadOnlyList<string>? CandidateCatalogIds = null);
+    IReadOnlyList<string>? CandidateCatalogIds = null,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? CandidateStorefrontHints = null);
 
 /// <summary>
 /// Reads only lyric files and allowlisted public catalog JSON from Apple's existing HTTP cache.
@@ -141,7 +142,8 @@ public sealed partial class AppleNativeLyricsProvider : ILyricsProvider
             new(status, null, id, lyricFiles, catalogFiles, message);
 
         NativeLyricsLookup MissingMetadata(string message) =>
-            new(NativeLyricsLookupStatus.MissingMetadata, null, null, lyricFiles, catalogFiles, message, unresolvedIds);
+            new(NativeLyricsLookupStatus.MissingMetadata, null, null, lyricFiles, catalogFiles, message, unresolvedIds,
+                AppleCatalogStorefrontHints.Build(documents, unresolvedIds));
     }
 
     private static bool HasValidResourceIdentity(NativeLyricsDocument document) =>

@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -78,7 +79,8 @@ internal sealed class MainController : IDisposable
         _settings = _store.Load();
         _settings.UiLanguage = UiText.Language;
         _cache = new(Path.Combine(directory, "lyrics-cache"));
-        _publicCatalog = new(_http, Path.Combine(directory, "public-catalog"), "US");
+        _publicCatalog = new(_http, Path.Combine(directory, "public-catalog"), "US", RegionInfo.CurrentRegion.TwoLetterISORegionName);
+        _publicCatalog.Diagnostic += diagnostic => AppLog.Write("Public Apple catalog storefront: " + JsonSerializer.Serialize(diagnostic));
         _overlay = new(_settings);
         _overlay.SettingsChanged += () => { ScheduleSave(); RefreshVisibility(); UpdateTray(); };
         _observer = new(directory);
@@ -337,7 +339,7 @@ internal sealed class MainController : IDisposable
         if (local.Status != NativeLyricsLookupStatus.MissingMetadata || local.CandidateCatalogIds is not { Count: > 0 } ids)
             return local;
         AppLog.Write($"Public Apple catalog: resolving {ids.Count} native cache identities; no lyrics or authentication requested.");
-        var metadata = await _publicCatalog.ResolveAsync(ids, token);
+        var metadata = await _publicCatalog.ResolveAsync(ids, token, local.CandidateStorefrontHints);
         token.ThrowIfCancellationRequested();
         AppLog.Write($"Public Apple catalog: resolved {metadata.Count}/{ids.Count} identities.");
         if (metadata.Count == 0) return local;

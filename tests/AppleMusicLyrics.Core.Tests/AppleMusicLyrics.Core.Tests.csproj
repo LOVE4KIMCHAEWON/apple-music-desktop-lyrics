@@ -20,6 +20,7 @@
     <!-- Preferences and their JSON store have no WPF dependency; exercise the real App code. -->
     <Compile Include="../../src/AppleMusicLyrics.App/OverlaySettings.cs" Link="App/OverlaySettings.cs" />
     <Compile Include="../../src/AppleMusicLyrics.App/SettingsStore.cs" Link="App/SettingsStore.cs" />
+    <Compile Include="../../src/AppleMusicLyrics.App/NativeCacheMonitor.cs" Link="App/NativeCacheMonitor.cs" />
     <Compile Include="../../src/AppleMusicLyrics.App/UiText.cs" Link="App/UiText.cs" />
     <EmbeddedResource Include="../../src/AppleMusicLyrics.App/UiText.*.zh-CN.json" Link="App/%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>

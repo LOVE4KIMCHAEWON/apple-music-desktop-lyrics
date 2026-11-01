@@ -8,6 +8,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <AssemblyName>AppleMusicLyrics.Probe</AssemblyName>
-    <Version>0.2.4</Version>
+    <Version>0.2.5</Version>
   </PropertyGroup>
 </Project>
